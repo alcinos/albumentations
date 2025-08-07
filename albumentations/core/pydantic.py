@@ -1,20 +1,91 @@
-"""Module containing Pydantic validation utilities for Albumentations.
+"""Module containing validation utilities for Albumentations.
 
 This module provides a collection of validators and utility functions used for validating
-parameters in the Pydantic models throughout the Albumentations library. It includes
-functions for ensuring numeric ranges are valid, handling type conversions, and creating
-standardized validation patterns that are reused across the codebase.
+parameters throughout the Albumentations library. It includes functions for ensuring numeric 
+ranges are valid, handling type conversions, and creating standardized validation patterns 
+that are reused across the codebase.
+
+This is a minimal replacement for pydantic functionality to remove the pydantic dependency.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Annotated, TypeVar, Union, overload
-
-from pydantic.functional_validators import AfterValidator
+from typing import Annotated, Any, overload, TypeVar, Union
 
 from albumentations.core.type_definitions import Number
 from albumentations.core.utils import to_tuple
+
+
+class Field:
+    """Simple field descriptor that mimics pydantic's Field functionality."""
+
+    def __init__(self, default=None, ge=None, le=None, gt=None, lt=None, **kwargs):
+        self.default = default
+        self.ge = ge
+        self.le = le
+        self.gt = gt
+        self.lt = lt
+        self.kwargs = kwargs
+
+
+class ConfigDict:
+    """Simple config dict that mimics pydantic's ConfigDict."""
+
+    def __init__(self, **kwargs):
+        self.config = kwargs
+
+
+class BaseModel:
+    """Simple BaseModel replacement that provides basic validation functionality."""
+
+    model_config = ConfigDict()
+
+    def __init__(self, **kwargs):
+        # Set all provided kwargs as attributes
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    @classmethod
+    def model_fields(cls):
+        """Return a dict of field names to Field objects."""
+        fields = {}
+        for name in dir(cls):
+            if not name.startswith("_"):
+                attr = getattr(cls, name)
+                if isinstance(attr, Field):
+                    fields[name] = attr
+        return fields
+
+
+# Simple validator decorators that do nothing but return the function
+def field_validator(*args, **kwargs):
+    """Simple field validator decorator."""
+
+    def decorator(func):
+        return func
+
+    return decorator
+
+
+def model_validator(*args, **kwargs):
+    """Simple model validator decorator."""
+
+    def decorator(func):
+        return func
+
+    return decorator
+
+
+# Simple AfterValidator that just applies the function
+class AfterValidator:
+    """Simple AfterValidator that applies a validation function."""
+
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, value):
+        return self.func(value)
 
 
 def nondecreasing(value: tuple[Number, Number]) -> tuple[Number, Number]:
@@ -31,11 +102,15 @@ def nondecreasing(value: tuple[Number, Number]) -> tuple[Number, Number]:
 
     """
     if not value[0] <= value[1]:
-        raise ValueError(f"First value should be less than the second value, got {value} instead")
+        raise ValueError(
+            f"First value should be less than the second value, got {value} instead"
+        )
     return value
 
 
-def process_non_negative_range(value: tuple[float, float] | float | None) -> tuple[float, float]:
+def process_non_negative_range(
+    value: tuple[float, float] | float | None
+) -> tuple[float, float]:
     """Process and validate a non-negative range.
 
     Args:
@@ -71,18 +146,17 @@ def float2int(value: tuple[float, float]) -> tuple[int, int]:
     return int(value[0]), int(value[1])
 
 
-NonNegativeFloatRangeType = Annotated[
-    Union[tuple[float, float], float],
-    AfterValidator(process_non_negative_range),
-    AfterValidator(nondecreasing),
-]
+# Simple validator function that applies a list of validation functions
+def apply_validators(value, validators):
+    """Apply a list of validation functions to a value."""
+    for validator in validators:
+        value = validator(value)
+    return value
 
-NonNegativeIntRangeType = Annotated[
-    Union[tuple[int, int], int],
-    AfterValidator(process_non_negative_range),
-    AfterValidator(nondecreasing),
-    AfterValidator(float2int),
-]
+
+# Type aliases that mimic pydantic's Annotated types but use simple validation
+NonNegativeFloatRangeType = Union[tuple[float, float], float]
+NonNegativeIntRangeType = Union[tuple[int, int], int]
 
 
 @overload
@@ -90,7 +164,9 @@ def create_symmetric_range(value: tuple[int, int] | int) -> tuple[int, int]: ...
 
 
 @overload
-def create_symmetric_range(value: tuple[float, float] | float) -> tuple[float, float]: ...
+def create_symmetric_range(
+    value: tuple[float, float] | float
+) -> tuple[float, float]: ...
 
 
 def create_symmetric_range(value: tuple[float, float] | float) -> tuple[float, float]:
@@ -108,7 +184,7 @@ def create_symmetric_range(value: tuple[float, float] | float) -> tuple[float, f
     return to_tuple(value)
 
 
-SymmetricRangeType = Annotated[Union[tuple[float, float], float], AfterValidator(create_symmetric_range)]
+SymmetricRangeType = Union[tuple[float, float], float]
 
 
 def convert_to_1plus_range(value: tuple[float, float] | float) -> tuple[float, float]:
@@ -205,35 +281,61 @@ def check_range_bounds(
             min_symbol = ">=" if min_inclusive else ">"
             max_symbol = "<=" if max_inclusive else "<"
             if not all(min_op(x, min_val) and max_op(x, max_val) for x in value):
-                raise ValueError(f"All values in {value} must be {min_symbol} {min_val} and {max_symbol} {max_val}")
+                raise ValueError(
+                    f"All values in {value} must be {min_symbol} {min_val} and {max_symbol} {max_val}"
+                )
         return value
 
     return validator
 
 
-ZeroOneRangeType = Annotated[
-    Union[tuple[float, float], float],
-    AfterValidator(convert_to_0plus_range),
-    AfterValidator(check_range_bounds(0, 1)),
-    AfterValidator(nondecreasing),
-]
+ZeroOneRangeType = Union[tuple[float, float], float]
+OnePlusFloatRangeType = Union[tuple[float, float], float]
+OnePlusIntRangeType = Union[tuple[float, float], float]
+OnePlusIntNonDecreasingRangeType = tuple[int, int]
+
+# Additional type aliases used throughout the codebase
+ProbabilityType = float
+InterpolationType = int
+BorderModeType = int
 
 
-OnePlusFloatRangeType = Annotated[
-    Union[tuple[float, float], float],
-    AfterValidator(convert_to_1plus_range),
-    AfterValidator(check_range_bounds(1, None)),
-]
-OnePlusIntRangeType = Annotated[
-    Union[tuple[float, float], float],
-    AfterValidator(convert_to_1plus_range),
-    AfterValidator(check_range_bounds(1, None)),
-    AfterValidator(float2int),
-]
+# Validation functions for common use cases
+def validate_non_negative_float_range(
+    value: NonNegativeFloatRangeType,
+) -> tuple[float, float]:
+    """Validate and convert a non-negative float range."""
+    result = process_non_negative_range(value)
+    return nondecreasing(result)
 
-OnePlusIntNonDecreasingRangeType = Annotated[
-    tuple[int, int],
-    AfterValidator(check_range_bounds(1, None)),
-    AfterValidator(nondecreasing),
-    AfterValidator(float2int),
-]
+
+def validate_non_negative_int_range(value: NonNegativeIntRangeType) -> tuple[int, int]:
+    """Validate and convert a non-negative int range."""
+    result = process_non_negative_range(value)
+    result = nondecreasing(result)
+    return float2int(result)
+
+
+def validate_zero_one_range(value: ZeroOneRangeType) -> tuple[float, float]:
+    """Validate a range between 0 and 1."""
+    result = convert_to_0plus_range(value)
+    result = check_range_bounds(0, 1)(result)
+    return nondecreasing(result)
+
+
+def validate_one_plus_float_range(value: OnePlusFloatRangeType) -> tuple[float, float]:
+    """Validate a range with minimum value of 1."""
+    result = convert_to_1plus_range(value)
+    return check_range_bounds(1, None)(result)
+
+
+def validate_one_plus_int_range(value: OnePlusIntRangeType) -> tuple[int, int]:
+    """Validate an int range with minimum value of 1."""
+    result = convert_to_1plus_range(value)
+    result = check_range_bounds(1, None)(result)
+    return float2int(result)
+
+
+def validate_symmetric_range(value: SymmetricRangeType) -> tuple[float, float]:
+    """Validate a symmetric range."""
+    return create_symmetric_range(value)

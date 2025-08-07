@@ -1,6 +1,6 @@
-from importlib.metadata import metadata
-
 try:
+    from importlib.metadata import metadata
+
     _metadata = metadata("albumentations")
     __version__ = _metadata["Version"]
     __author__ = _metadata["Author"]

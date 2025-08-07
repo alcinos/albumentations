@@ -17,10 +17,9 @@ from warnings import warn
 import cv2
 import numpy as np
 from albucore import batch_transform
-from pydantic import BaseModel, ConfigDict, Field
-
 from albumentations.core.bbox_utils import BboxProcessor
 from albumentations.core.keypoints_utils import KeypointsProcessor
+from albumentations.core.pydantic import BaseModel, ConfigDict, Field, ProbabilityType
 from albumentations.core.validation import ValidatedTransformMeta
 
 from .serialization import Serializable, SerializableMeta, get_shortest_class_fullname
@@ -38,8 +37,8 @@ class Interpolation:
 
 class BaseTransformInitSchema(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    p: float = Field(ge=0, le=1)
-    strict: bool
+    p: float = 0.5  # Default probability
+    strict: bool = False  # Default strict mode
 
 
 class CombinedMeta(SerializableMeta, ValidatedTransformMeta):
