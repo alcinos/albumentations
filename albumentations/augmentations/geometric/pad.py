@@ -19,21 +19,15 @@ from typing import Any, Literal
 
 import cv2
 import numpy as np
-from pydantic import (
-    Field,
-    model_validator,
-)
-from typing_extensions import Self
 
-from albumentations.core.bbox_utils import (
-    denormalize_bboxes,
-    normalize_bboxes,
-)
+from albumentations.core.bbox_utils import denormalize_bboxes, normalize_bboxes
+from albumentations.core.pydantic import Field, model_validator
 from albumentations.core.transforms_interface import (
     BaseTransformInitSchema,
     DualTransform,
 )
 from albumentations.core.type_definitions import ALL_TARGETS
+from typing_extensions import Self
 
 from . import functional as fgeometric
 
@@ -577,7 +571,9 @@ class PadIfNeeded(Pad):
         min_width: int | None = Field(ge=1)
         pad_height_divisor: int | None = Field(ge=1)
         pad_width_divisor: int | None = Field(ge=1)
-        position: Literal["center", "top_left", "top_right", "bottom_left", "bottom_right", "random"]
+        position: Literal[
+            "center", "top_left", "top_right", "bottom_left", "bottom_right", "random"
+        ]
         border_mode: Literal[
             cv2.BORDER_CONSTANT,
             cv2.BORDER_REPLICATE,
@@ -610,7 +606,9 @@ class PadIfNeeded(Pad):
         min_width: int | None = 1024,
         pad_height_divisor: int | None = None,
         pad_width_divisor: int | None = None,
-        position: Literal["center", "top_left", "top_right", "bottom_left", "bottom_right", "random"] = "center",
+        position: Literal[
+            "center", "top_left", "top_right", "bottom_left", "bottom_right", "random"
+        ] = "center",
         border_mode: Literal[
             cv2.BORDER_CONSTANT,
             cv2.BORDER_REPLICATE,
@@ -651,21 +649,25 @@ class PadIfNeeded(Pad):
             dict[str, Any]: Parameters.
 
         """
-        h_pad_top, h_pad_bottom, w_pad_left, w_pad_right = fgeometric.get_padding_params(
-            image_shape=params["shape"][:2],
-            min_height=self.min_height,
-            min_width=self.min_width,
-            pad_height_divisor=self.pad_height_divisor,
-            pad_width_divisor=self.pad_width_divisor,
+        h_pad_top, h_pad_bottom, w_pad_left, w_pad_right = (
+            fgeometric.get_padding_params(
+                image_shape=params["shape"][:2],
+                min_height=self.min_height,
+                min_width=self.min_width,
+                pad_height_divisor=self.pad_height_divisor,
+                pad_width_divisor=self.pad_width_divisor,
+            )
         )
 
-        h_pad_top, h_pad_bottom, w_pad_left, w_pad_right = fgeometric.adjust_padding_by_position(
-            h_top=h_pad_top,
-            h_bottom=h_pad_bottom,
-            w_left=w_pad_left,
-            w_right=w_pad_right,
-            position=self.position,
-            py_random=self.py_random,
+        h_pad_top, h_pad_bottom, w_pad_left, w_pad_right = (
+            fgeometric.adjust_padding_by_position(
+                h_top=h_pad_top,
+                h_bottom=h_pad_bottom,
+                w_left=w_pad_left,
+                w_right=w_pad_right,
+                position=self.position,
+                py_random=self.py_random,
+            )
         )
 
         return {

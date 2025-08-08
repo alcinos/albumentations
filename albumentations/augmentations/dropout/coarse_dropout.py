@@ -12,13 +12,16 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 from warnings import warn
 
-import numpy as np
-from pydantic import AfterValidator
-
 import albumentations.augmentations.dropout.functional as fdropout
+
+import numpy as np
 from albumentations.augmentations.dropout.transforms import BaseDropout
 from albumentations.core.bbox_utils import denormalize_bboxes
-from albumentations.core.pydantic import check_range_bounds, nondecreasing
+from albumentations.core.pydantic import (
+    AfterValidator,
+    check_range_bounds,
+    nondecreasing,
+)
 
 __all__ = ["CoarseDropout", "ConstrainedCoarseDropout", "Erasing"]
 
@@ -123,7 +126,11 @@ class CoarseDropout(BaseDropout):
         num_holes_range: tuple[int, int] = (1, 2),
         hole_height_range: tuple[float, float] | tuple[int, int] = (0.1, 0.2),
         hole_width_range: tuple[float, float] | tuple[int, int] = (0.1, 0.2),
-        fill: tuple[float, ...] | float | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"] = 0,
+        fill: (
+            tuple[float, ...]
+            | float
+            | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"]
+        ) = 0,
         fill_mask: tuple[float, ...] | float | None = None,
         p: float = 0.5,
     ):
@@ -149,16 +156,26 @@ class CoarseDropout(BaseDropout):
             min_width = width_range[0]
             max_width = min(width_range[1], width)
 
-            hole_heights = self.random_generator.integers(int(min_height), int(max_height + 1), size=size)
-            hole_widths = self.random_generator.integers(int(min_width), int(max_width + 1), size=size)
+            hole_heights = self.random_generator.integers(
+                int(min_height), int(max_height + 1), size=size
+            )
+            hole_widths = self.random_generator.integers(
+                int(min_width), int(max_width + 1), size=size
+            )
 
         else:  # Assume float
-            hole_heights = (height * self.random_generator.uniform(*height_range, size=size)).astype(int)
-            hole_widths = (width * self.random_generator.uniform(*width_range, size=size)).astype(int)
+            hole_heights = (
+                height * self.random_generator.uniform(*height_range, size=size)
+            ).astype(int)
+            hole_widths = (
+                width * self.random_generator.uniform(*width_range, size=size)
+            ).astype(int)
 
         return hole_heights, hole_widths
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Get parameters dependent on the data.
 
         Args:
@@ -182,8 +199,12 @@ class CoarseDropout(BaseDropout):
 
         height, width = image_shape[:2]
 
-        y_min = self.random_generator.integers(0, height - hole_heights + 1, size=num_holes)
-        x_min = self.random_generator.integers(0, width - hole_widths + 1, size=num_holes)
+        y_min = self.random_generator.integers(
+            0, height - hole_heights + 1, size=num_holes
+        )
+        x_min = self.random_generator.integers(
+            0, width - hole_widths + 1, size=num_holes
+        )
         y_max = y_min + hole_heights
         x_max = x_min + hole_widths
 
@@ -271,7 +292,11 @@ class Erasing(BaseDropout):
         self,
         scale: tuple[float, float] = (0.02, 0.33),
         ratio: tuple[float, float] = (0.3, 3.3),
-        fill: tuple[float, ...] | float | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"] = 0,
+        fill: (
+            tuple[float, ...]
+            | float
+            | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"]
+        ) = 0,
         fill_mask: tuple[float, ...] | float | None = None,
         p: float = 0.5,
     ):
@@ -280,7 +305,9 @@ class Erasing(BaseDropout):
         self.scale = scale
         self.ratio = ratio
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate erasing parameters using direct mathematical derivation.
 
         Given:
@@ -484,7 +511,11 @@ class ConstrainedCoarseDropout(BaseDropout):
         num_holes_range: tuple[int, int] = (1, 1),
         hole_height_range: tuple[float, float] = (0.1, 0.1),
         hole_width_range: tuple[float, float] = (0.1, 0.1),
-        fill: tuple[float, ...] | float | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"] = 0,
+        fill: (
+            tuple[float, ...]
+            | float
+            | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"]
+        ) = 0,
         fill_mask: tuple[float, ...] | float | None = None,
         p: float = 0.5,
         mask_indices: list[int] | None = None,
@@ -513,13 +544,19 @@ class ConstrainedCoarseDropout(BaseDropout):
         if not all(isinstance(label, (int, float)) for label in self.bbox_labels):
             label_fields = bbox_processor.params.label_fields
             if label_fields is None:
-                raise ValueError("BboxParams.label_fields must be specified when using string labels")
+                raise ValueError(
+                    "BboxParams.label_fields must be specified when using string labels"
+                )
 
             first_class_label = label_fields[0]
             # Access encoder through label_manager's metadata
-            metadata = bbox_processor.label_manager.metadata["bboxes"][first_class_label]
+            metadata = bbox_processor.label_manager.metadata["bboxes"][
+                first_class_label
+            ]
             if metadata.encoder is None:
-                raise ValueError(f"No encoder found for label field {first_class_label}")
+                raise ValueError(
+                    f"No encoder found for label field {first_class_label}"
+                )
 
             target_labels = metadata.encoder.transform(self.bbox_labels)
         else:
@@ -531,7 +568,9 @@ class ConstrainedCoarseDropout(BaseDropout):
 
         return filtered_boxes if len(filtered_boxes) > 0 else None
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Get hole parameters based on either mask indices or bbox labels."""
         num_holes_per_obj = self.py_random.randint(*self.num_holes_range)
 
@@ -558,7 +597,10 @@ class ConstrainedCoarseDropout(BaseDropout):
                     self.random_generator,
                 )
         else:
-            warn("Neither valid mask nor bboxes provided, do not apply Constrained Coarse Dropout", stacklevel=2)
+            warn(
+                "Neither valid mask nor bboxes provided, do not apply Constrained Coarse Dropout",
+                stacklevel=2,
+            )
             holes = np.array([], dtype=np.int32).reshape((0, 4))
 
         return {

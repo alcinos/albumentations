@@ -10,11 +10,15 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, Field
-
 import albumentations.augmentations.dropout.functional as fdropout
 from albumentations.augmentations.dropout.transforms import BaseDropout
-from albumentations.core.pydantic import check_range_bounds, nondecreasing
+
+from albumentations.core.pydantic import (
+    AfterValidator,
+    check_range_bounds,
+    Field,
+    nondecreasing,
+)
 
 __all__ = ["GridDropout"]
 
@@ -106,12 +110,21 @@ class GridDropout(BaseDropout):
         random_offset: bool
 
         unit_size_range: (
-            Annotated[tuple[int, int], AfterValidator(check_range_bounds(2, None)), AfterValidator(nondecreasing)]
+            Annotated[
+                tuple[int, int],
+                AfterValidator(check_range_bounds(2, None)),
+                AfterValidator(nondecreasing),
+            ]
             | None
         )
-        shift_xy: Annotated[tuple[int, int], AfterValidator(check_range_bounds(0, None))]
+        shift_xy: Annotated[
+            tuple[int, int], AfterValidator(check_range_bounds(0, None))
+        ]
 
-        holes_number_xy: Annotated[tuple[int, int], AfterValidator(check_range_bounds(1, None))] | None
+        holes_number_xy: (
+            Annotated[tuple[int, int], AfterValidator(check_range_bounds(1, None))]
+            | None
+        )
 
     def __init__(
         self,
@@ -120,7 +133,11 @@ class GridDropout(BaseDropout):
         unit_size_range: tuple[int, int] | None = None,
         holes_number_xy: tuple[int, int] | None = None,
         shift_xy: tuple[int, int] = (0, 0),
-        fill: tuple[float, ...] | float | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"] = 0,
+        fill: (
+            tuple[float, ...]
+            | float
+            | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"]
+        ) = 0,
         fill_mask: tuple[float, ...] | float | None = None,
         p: float = 0.5,
     ):
@@ -131,7 +148,9 @@ class GridDropout(BaseDropout):
         self.random_offset = random_offset
         self.shift_xy = shift_xy
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Get parameters dependent on the data.
 
         Args:

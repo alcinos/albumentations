@@ -10,13 +10,19 @@ import re
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-import numpy as np
-from pydantic import AfterValidator
-
 import albumentations.augmentations.text.functional as ftext
+
+import numpy as np
 from albumentations.core.bbox_utils import check_bboxes, denormalize_bboxes
-from albumentations.core.pydantic import check_range_bounds, nondecreasing
-from albumentations.core.transforms_interface import BaseTransformInitSchema, ImageOnlyTransform
+from albumentations.core.pydantic import (
+    AfterValidator,
+    check_range_bounds,
+    nondecreasing,
+)
+from albumentations.core.transforms_interface import (
+    BaseTransformInitSchema,
+    ImageOnlyTransform,
+)
 
 __all__ = ["TextImage"]
 
@@ -95,7 +101,9 @@ class TextImage(ImageOnlyTransform):
         self,
         font_path: str | Path,
         stopwords: tuple[str, ...] = ("the", "is", "in", "at", "of"),
-        augmentations: tuple[Literal["insertion", "swap", "deletion"] | None, ...] = (None,),
+        augmentations: tuple[Literal["insertion", "swap", "deletion"] | None, ...] = (
+            None,
+        ),
         fraction_range: tuple[float, float] = (1.0, 1.0),
         font_size_fraction_range: tuple[float, float] = (0.8, 0.9),
         font_color: tuple[float, ...] = (0, 0, 0),  # black in RGB
@@ -148,13 +156,21 @@ class TextImage(ImageOnlyTransform):
         num_words_to_modify = max(1, int(fraction * num_words))
 
         if choice == "insertion":
-            result_sentence = ftext.insert_random_stopwords(words, num_words_to_modify, self.stopwords, self.py_random)
+            result_sentence = ftext.insert_random_stopwords(
+                words, num_words_to_modify, self.stopwords, self.py_random
+            )
         elif choice == "swap":
-            result_sentence = ftext.swap_random_words(words, num_words_to_modify, self.py_random)
+            result_sentence = ftext.swap_random_words(
+                words, num_words_to_modify, self.py_random
+            )
         elif choice == "deletion":
-            result_sentence = ftext.delete_random_words(words, num_words_to_modify, self.py_random)
+            result_sentence = ftext.delete_random_words(
+                words, num_words_to_modify, self.py_random
+            )
         else:
-            raise ValueError("Invalid choice. Choose from 'insertion', 'swap', or 'deletion'.")
+            raise ValueError(
+                "Invalid choice. Choose from 'insertion', 'swap', or 'deletion'."
+            )
 
         result_sentence = re.sub(" +", " ", result_sentence).strip()
         return result_sentence if result_sentence != text else ""
@@ -195,14 +211,20 @@ class TextImage(ImageOnlyTransform):
 
         font_size_fraction = self.py_random.uniform(*self.font_size_fraction_range)
 
-        font = ImageFont.truetype(str(self.font_path), int(font_size_fraction * bbox_height))
+        font = ImageFont.truetype(
+            str(self.font_path), int(font_size_fraction * bbox_height)
+        )
 
         if not self.augmentations or self.augmentations is None:
             augmented_text = text
         else:
             augmentation = self.py_random.choice(self.augmentations)
 
-            augmented_text = text if augmentation is None else self.random_aug(text, 0.5, choice=augmentation)
+            augmented_text = (
+                text
+                if augmentation is None
+                else self.random_aug(text, 0.5, choice=augmentation)
+            )
 
         font_color = self.font_color
 
@@ -215,7 +237,9 @@ class TextImage(ImageOnlyTransform):
             "font_color": font_color,
         }
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate parameters based on input data.
 
         Args:
@@ -242,10 +266,17 @@ class TextImage(ImageOnlyTransform):
 
         num_bboxes_to_modify = int(len(metadata) * fraction)
 
-        bbox_indices_to_update = self.py_random.sample(range(len(metadata)), num_bboxes_to_modify)
+        bbox_indices_to_update = self.py_random.sample(
+            range(len(metadata)), num_bboxes_to_modify
+        )
 
         overlay_data = [
-            self.preprocess_metadata(image, metadata[bbox_index]["bbox"], metadata[bbox_index]["text"], bbox_index)
+            self.preprocess_metadata(
+                image,
+                metadata[bbox_index]["bbox"],
+                metadata[bbox_index]["text"],
+                bbox_index,
+            )
             for bbox_index in bbox_indices_to_update
         ]
 
@@ -272,7 +303,9 @@ class TextImage(ImageOnlyTransform):
         """
         return ftext.render_text(img, overlay_data, clear_bg=self.clear_bg)
 
-    def apply_with_params(self, params: dict[str, Any], *args: Any, **kwargs: Any) -> dict[str, Any]:
+    def apply_with_params(
+        self, params: dict[str, Any], *args: Any, **kwargs: Any
+    ) -> dict[str, Any]:
         """Apply the transform and include overlay data in the result.
 
         Args:

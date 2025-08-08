@@ -10,12 +10,10 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Sequence
-from typing import Annotated, Any, Callable, Literal, cast
+from typing import Annotated, Any, Callable, cast, Literal
 
 import cv2
 import numpy as np
-from pydantic import AfterValidator, field_validator, model_validator
-from typing_extensions import Self
 
 from albumentations.augmentations.mixing.domain_adaptation_functional import (
     adapt_pixel_distribution,
@@ -23,8 +21,19 @@ from albumentations.augmentations.mixing.domain_adaptation_functional import (
     fourier_domain_adaptation,
 )
 from albumentations.augmentations.utils import read_rgb_image
-from albumentations.core.pydantic import ZeroOneRangeType, check_range_bounds, nondecreasing
-from albumentations.core.transforms_interface import BaseTransformInitSchema, ImageOnlyTransform
+from albumentations.core.pydantic import (
+    AfterValidator,
+    check_range_bounds,
+    field_validator,
+    model_validator,
+    nondecreasing,
+    ZeroOneRangeType,
+)
+from albumentations.core.transforms_interface import (
+    BaseTransformInitSchema,
+    ImageOnlyTransform,
+)
+from typing_extensions import Self
 
 __all__ = [
     "FDA",
@@ -241,9 +250,7 @@ class BaseDomainAdaptation(ImageOnlyTransform):
 
         """
         if self.reference_images is not None:
-            msg = (
-                f"{self.__class__.__name__} cannot be reliably serialized when using the deprecated 'reference_images'."
-            )
+            msg = f"{self.__class__.__name__} cannot be reliably serialized when using the deprecated 'reference_images'."
             raise NotImplementedError(msg)
 
         msg = (
@@ -364,10 +371,17 @@ class HistogramMatching(BaseDomainAdaptation):
         metadata_key: str = "hm_metadata",
         p: float = 0.5,
     ):
-        super().__init__(reference_images=reference_images, read_fn=read_fn, metadata_key=metadata_key, p=p)
+        super().__init__(
+            reference_images=reference_images,
+            read_fn=read_fn,
+            metadata_key=metadata_key,
+            p=p,
+        )
         self.blend_ratio = blend_ratio
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate parameters for the transform based on input data.
 
         Args:
@@ -563,10 +577,17 @@ class FDA(BaseDomainAdaptation):
         metadata_key: str = "fda_metadata",
         p: float = 0.5,
     ):
-        super().__init__(reference_images=reference_images, read_fn=read_fn, metadata_key=metadata_key, p=p)
+        super().__init__(
+            reference_images=reference_images,
+            read_fn=read_fn,
+            metadata_key=metadata_key,
+            p=p,
+        )
         self.beta_limit = cast("tuple[float, float]", beta_limit)
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate parameters for the transform based on input data."""
         target_image = self._get_reference_image(data)
         height, width = params["shape"][:2]
@@ -574,7 +595,10 @@ class FDA(BaseDomainAdaptation):
         # Resize the target image to match the input image dimensions
         target_image_resized = cv2.resize(target_image, dsize=(width, height))
 
-        return {"target_image": target_image_resized, "beta": self.py_random.uniform(*self.beta_limit)}
+        return {
+            "target_image": target_image_resized,
+            "beta": self.py_random.uniform(*self.beta_limit),
+        }
 
     def apply(
         self,
@@ -754,11 +778,18 @@ class PixelDistributionAdaptation(BaseDomainAdaptation):
         metadata_key: str = "pda_metadata",
         p: float = 0.5,
     ):
-        super().__init__(reference_images=reference_images, read_fn=read_fn, metadata_key=metadata_key, p=p)
+        super().__init__(
+            reference_images=reference_images,
+            read_fn=read_fn,
+            metadata_key=metadata_key,
+            p=p,
+        )
         self.blend_ratio = blend_ratio
         self.transform_type = transform_type
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Get parameters for the transform."""
         reference_image = self._get_reference_image(data)
         return {
@@ -766,7 +797,13 @@ class PixelDistributionAdaptation(BaseDomainAdaptation):
             "blend_ratio": self.py_random.uniform(*self.blend_ratio),
         }
 
-    def apply(self, img: np.ndarray, reference_image: np.ndarray, blend_ratio: float, **params: Any) -> np.ndarray:
+    def apply(
+        self,
+        img: np.ndarray,
+        reference_image: np.ndarray,
+        blend_ratio: float,
+        **params: Any,
+    ) -> np.ndarray:
         """Apply pixel distribution adaptation to the input image.
 
         Args:

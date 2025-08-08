@@ -7,17 +7,20 @@ scaling with aspect ratio preservation, and size-constrained transformations.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal, cast
+from typing import Any, cast, Literal
 
 import cv2
 import numpy as np
 from albucore import batch_transform
-from pydantic import Field, field_validator, model_validator
-from typing_extensions import Self
+from albumentations.core.pydantic import Field, field_validator, model_validator
 
-from albumentations.core.transforms_interface import BaseTransformInitSchema, DualTransform
+from albumentations.core.transforms_interface import (
+    BaseTransformInitSchema,
+    DualTransform,
+)
 from albumentations.core.type_definitions import ALL_TARGETS
 from albumentations.core.utils import to_tuple
+from typing_extensions import Self
 
 from . import functional as fgeometric
 
@@ -147,7 +150,9 @@ class RandomScale(DualTransform):
 
         @field_validator("scale_limit")
         @classmethod
-        def _check_scale_limit(cls, v: tuple[float, float] | float) -> tuple[float, float]:
+        def _check_scale_limit(
+            cls, v: tuple[float, float] | float
+        ) -> tuple[float, float]:
             return to_tuple(v)
 
     def __init__(
@@ -400,7 +405,9 @@ class MaxSizeTransform(DualTransform):
             if self.max_size is None and self.max_size_hw is None:
                 raise ValueError("Either max_size or max_size_hw must be specified")
             if self.max_size is not None and self.max_size_hw is not None:
-                raise ValueError("Only one of max_size or max_size_hw should be specified")
+                raise ValueError(
+                    "Only one of max_size or max_size_hw should be specified"
+                )
             return self
 
     def __init__(
@@ -442,13 +449,17 @@ class MaxSizeTransform(DualTransform):
         **params: Any,
     ) -> np.ndarray:
         height, width = img.shape[:2]
-        new_height, new_width = max(1, round(height * scale)), max(1, round(width * scale))
+        new_height, new_width = max(1, round(height * scale)), max(
+            1, round(width * scale)
+        )
 
         interpolation = self.interpolation
         if self.area_for_downscale in ["image", "image_mask"] and scale < 1.0:
             interpolation = cv2.INTER_AREA
 
-        return fgeometric.resize(img, (new_height, new_width), interpolation=interpolation)
+        return fgeometric.resize(
+            img, (new_height, new_width), interpolation=interpolation
+        )
 
     def apply_to_mask(
         self,
@@ -457,13 +468,17 @@ class MaxSizeTransform(DualTransform):
         **params: Any,
     ) -> np.ndarray:
         height, width = mask.shape[:2]
-        new_height, new_width = max(1, round(height * scale)), max(1, round(width * scale))
+        new_height, new_width = max(1, round(height * scale)), max(
+            1, round(width * scale)
+        )
 
         interpolation = self.mask_interpolation
         if self.area_for_downscale == "image_mask" and scale < 1.0:
             interpolation = cv2.INTER_AREA
 
-        return fgeometric.resize(mask, (new_height, new_width), interpolation=interpolation)
+        return fgeometric.resize(
+            mask, (new_height, new_width), interpolation=interpolation
+        )
 
     def apply_to_bboxes(self, bboxes: np.ndarray, **params: Any) -> np.ndarray:
         # Bounding box coordinates are scale invariant
@@ -478,23 +493,33 @@ class MaxSizeTransform(DualTransform):
         return fgeometric.keypoints_scale(keypoints, scale, scale)
 
     @batch_transform("spatial", has_batch_dim=True, has_depth_dim=False)
-    def apply_to_images(self, images: np.ndarray, *args: Any, **params: Any) -> np.ndarray:
+    def apply_to_images(
+        self, images: np.ndarray, *args: Any, **params: Any
+    ) -> np.ndarray:
         return self.apply(images, *args, **params)
 
     @batch_transform("spatial", has_batch_dim=False, has_depth_dim=True)
-    def apply_to_volume(self, volume: np.ndarray, *args: Any, **params: Any) -> np.ndarray:
+    def apply_to_volume(
+        self, volume: np.ndarray, *args: Any, **params: Any
+    ) -> np.ndarray:
         return self.apply(volume, *args, **params)
 
     @batch_transform("spatial", has_batch_dim=True, has_depth_dim=True)
-    def apply_to_volumes(self, volumes: np.ndarray, *args: Any, **params: Any) -> np.ndarray:
+    def apply_to_volumes(
+        self, volumes: np.ndarray, *args: Any, **params: Any
+    ) -> np.ndarray:
         return self.apply(volumes, *args, **params)
 
     @batch_transform("spatial", has_batch_dim=True, has_depth_dim=True)
-    def apply_to_mask3d(self, mask3d: np.ndarray, *args: Any, **params: Any) -> np.ndarray:
+    def apply_to_mask3d(
+        self, mask3d: np.ndarray, *args: Any, **params: Any
+    ) -> np.ndarray:
         return self.apply_to_mask(mask3d, *args, **params)
 
     @batch_transform("spatial", has_batch_dim=True, has_depth_dim=True)
-    def apply_to_masks3d(self, masks3d: np.ndarray, *args: Any, **params: Any) -> np.ndarray:
+    def apply_to_masks3d(
+        self, masks3d: np.ndarray, *args: Any, **params: Any
+    ) -> np.ndarray:
         return self.apply_to_mask(masks3d, *args, **params)
 
 
@@ -586,7 +611,9 @@ class LongestMaxSize(MaxSizeTransform):
 
     """
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate parameters that depend on the input data.
 
         Args:
@@ -707,7 +734,9 @@ class SmallestMaxSize(MaxSizeTransform):
 
     """
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate parameters that depend on the input data.
 
         Args:
@@ -903,7 +932,9 @@ class Resize(DualTransform):
         if self.area_for_downscale in ["image", "image_mask"] and is_downscale:
             interpolation = cv2.INTER_AREA
 
-        return fgeometric.resize(img, (self.height, self.width), interpolation=interpolation)
+        return fgeometric.resize(
+            img, (self.height, self.width), interpolation=interpolation
+        )
 
     def apply_to_mask(self, mask: np.ndarray, **params: Any) -> np.ndarray:
         """Apply resizing to the mask.
@@ -923,7 +954,9 @@ class Resize(DualTransform):
         if self.area_for_downscale == "image_mask" and is_downscale:
             interpolation = cv2.INTER_AREA
 
-        return fgeometric.resize(mask, (self.height, self.width), interpolation=interpolation)
+        return fgeometric.resize(
+            mask, (self.height, self.width), interpolation=interpolation
+        )
 
     def apply_to_bboxes(self, bboxes: np.ndarray, **params: Any) -> np.ndarray:
         """Apply the transform to bounding boxes.

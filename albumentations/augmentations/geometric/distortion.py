@@ -28,37 +28,29 @@ target types.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, cast
+from typing import Annotated, Any, cast, Literal
 from warnings import warn
 
 import cv2
 import numpy as np
 from albucore import batch_transform
-from pydantic import (
-    AfterValidator,
-    Field,
-    ValidationInfo,
-    field_validator,
-)
 
 from albumentations.augmentations.utils import check_range
-from albumentations.core.bbox_utils import (
-    denormalize_bboxes,
-    normalize_bboxes,
-)
+from albumentations.core.bbox_utils import denormalize_bboxes, normalize_bboxes
 from albumentations.core.pydantic import (
+    AfterValidator,
+    check_range_bounds,
+    Field,
+    field_validator,
     NonNegativeFloatRangeType,
     SymmetricRangeType,
-    check_range_bounds,
+    ValidationInfo,
 )
 from albumentations.core.transforms_interface import (
     BaseTransformInitSchema,
     DualTransform,
 )
-from albumentations.core.type_definitions import (
-    ALL_TARGETS,
-    BIG_INTEGER,
-)
+from albumentations.core.type_definitions import ALL_TARGETS, BIG_INTEGER
 from albumentations.core.utils import to_tuple
 
 from . import functional as fgeometric
@@ -181,7 +173,13 @@ class BaseDistortion(DualTransform):
     _targets = ALL_TARGETS
 
     class InitSchema(BaseTransformInitSchema):
-        interpolation: Literal[cv2.INTER_NEAREST, cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_LANCZOS4]
+        interpolation: Literal[
+            cv2.INTER_NEAREST,
+            cv2.INTER_LINEAR,
+            cv2.INTER_CUBIC,
+            cv2.INTER_AREA,
+            cv2.INTER_LANCZOS4,
+        ]
         mask_interpolation: Literal[
             cv2.INTER_NEAREST,
             cv2.INTER_LINEAR,
@@ -398,7 +396,9 @@ class BaseDistortion(DualTransform):
         """
         if self.keypoint_remapping_method == "direct":
             return fgeometric.remap_keypoints(keypoints, map_x, map_y, params["shape"])
-        return fgeometric.remap_keypoints_via_mask(keypoints, map_x, map_y, params["shape"])
+        return fgeometric.remap_keypoints_via_mask(
+            keypoints, map_x, map_y, params["shape"]
+        )
 
 
 class ElasticTransform(BaseDistortion):
@@ -1002,8 +1002,14 @@ class GridDistortion(BaseDistortion):
 
         """
         image_shape = params["shape"][:2]
-        steps_x = [1 + self.py_random.uniform(*self.distort_limit) for _ in range(self.num_steps + 1)]
-        steps_y = [1 + self.py_random.uniform(*self.distort_limit) for _ in range(self.num_steps + 1)]
+        steps_x = [
+            1 + self.py_random.uniform(*self.distort_limit)
+            for _ in range(self.num_steps + 1)
+        ]
+        steps_y = [
+            1 + self.py_random.uniform(*self.distort_limit)
+            for _ in range(self.num_steps + 1)
+        ]
 
         if self.normalized:
             normalized_params = fgeometric.normalize_grid_distortion_steps(
@@ -1144,7 +1150,9 @@ class ThinPlateSpline(BaseDistortion):
     """
 
     class InitSchema(BaseDistortion.InitSchema):
-        scale_range: Annotated[tuple[float, float], AfterValidator(check_range_bounds(0, 1))]
+        scale_range: Annotated[
+            tuple[float, float], AfterValidator(check_range_bounds(0, 1))
+        ]
         num_control_points: int = Field(ge=2)
         keypoint_remapping_method: Literal["direct", "mask"]
 

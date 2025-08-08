@@ -8,34 +8,32 @@ and support parameters for controlling the intensity and properties of the blur 
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, cast
+from typing import Annotated, Any, cast, Literal
 
 import numpy as np
-from pydantic import (
-    AfterValidator,
-    Field,
-    ValidationInfo,
-    field_validator,
-    model_validator,
-)
-from typing_extensions import Self
 
 from albumentations.augmentations.pixel import functional as fpixel
 from albumentations.core.pydantic import (
+    AfterValidator,
+    check_range_bounds,
+    convert_to_0plus_range,
+    Field,
+    field_validator,
+    model_validator,
+    nondecreasing,
     NonNegativeFloatRangeType,
     OnePlusFloatRangeType,
     OnePlusIntRangeType,
-    SymmetricRangeType,
-    check_range_bounds,
-    convert_to_0plus_range,
-    nondecreasing,
     process_non_negative_range,
+    SymmetricRangeType,
+    ValidationInfo,
 )
 from albumentations.core.transforms_interface import (
     BaseTransformInitSchema,
     ImageOnlyTransform,
 )
 from albumentations.core.utils import to_tuple
+from typing_extensions import Self
 
 from . import functional as fblur
 
@@ -60,7 +58,9 @@ class BlurInitSchema(BaseTransformInitSchema):
 
     @field_validator("blur_limit")
     @classmethod
-    def process_blur(cls, value: tuple[int, int] | int, info: ValidationInfo) -> tuple[int, int]:
+    def process_blur(
+        cls, value: tuple[int, int] | int, info: ValidationInfo
+    ) -> tuple[int, int]:
         return fblur.process_blur_limit(value, info, min_value=3)
 
 
@@ -794,7 +794,9 @@ class GaussianBlur(ImageOnlyTransform):
         """
         return fpixel.separable_convolve(img, kernel=kernel)
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, float]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, float]:
         """Get parameters that depend on input data.
 
         Args:
@@ -1242,7 +1244,9 @@ class AdvancedBlur(ImageOnlyTransform):
 
         @field_validator("beta_limit")
         @classmethod
-        def _check_beta_limit(cls, value: tuple[float, float] | float) -> tuple[float, float]:
+        def _check_beta_limit(
+            cls, value: tuple[float, float] | float
+        ) -> tuple[float, float]:
             result = to_tuple(value, low=0)
             if not (result[0] < 1.0 < result[1]):
                 raise ValueError(

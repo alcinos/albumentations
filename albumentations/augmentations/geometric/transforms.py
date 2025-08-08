@@ -9,20 +9,12 @@ transformations like grid shuffling and thin plate splines.
 from __future__ import annotations
 
 import random
-from typing import Annotated, Any, Literal, cast
+from typing import Annotated, Any, cast, Literal
 from warnings import warn
 
 import cv2
 import numpy as np
 from albucore import batch_transform, is_grayscale_image, is_rgb_image
-from pydantic import (
-    AfterValidator,
-    Field,
-    ValidationInfo,
-    field_validator,
-    model_validator,
-)
-from typing_extensions import Self
 
 from albumentations.augmentations.utils import check_range
 from albumentations.core.bbox_utils import (
@@ -31,10 +23,15 @@ from albumentations.core.bbox_utils import (
     normalize_bboxes,
 )
 from albumentations.core.pydantic import (
+    AfterValidator,
+    check_range_bounds,
+    Field,
+    field_validator,
+    model_validator,
     NonNegativeFloatRangeType,
     OnePlusIntRangeType,
     SymmetricRangeType,
-    check_range_bounds,
+    ValidationInfo,
 )
 from albumentations.core.transforms_interface import (
     BaseTransformInitSchema,
@@ -42,6 +39,7 @@ from albumentations.core.transforms_interface import (
 )
 from albumentations.core.type_definitions import ALL_TARGETS
 from albumentations.core.utils import to_tuple
+from typing_extensions import Self
 
 from . import functional as fgeometric
 
@@ -622,8 +620,12 @@ class Affine(DualTransform):
 
     class InitSchema(BaseTransformInitSchema):
         scale: tuple[float, float] | float | dict[str, float | tuple[float, float]]
-        translate_percent: tuple[float, float] | float | dict[str, float | tuple[float, float]] | None
-        translate_px: tuple[float, float] | float | dict[str, float | tuple[float, float]] | None
+        translate_percent: (
+            tuple[float, float] | float | dict[str, float | tuple[float, float]] | None
+        )
+        translate_px: (
+            tuple[float, float] | float | dict[str, float | tuple[float, float]] | None
+        )
         rotate: tuple[float, float] | float
         shear: tuple[float, float] | float | dict[str, float | tuple[float, float]]
         interpolation: Literal[
@@ -700,11 +702,13 @@ class Affine(DualTransform):
 
         @staticmethod
         def _handle_dict_arg(
-            val: tuple[float, float]
-            | dict[str, float | tuple[float, float]]
-            | float
-            | tuple[int, int]
-            | dict[str, int | tuple[int, int]],
+            val: (
+                tuple[float, float]
+                | dict[str, float | tuple[float, float]]
+                | float
+                | tuple[int, int]
+                | dict[str, int | tuple[int, int]]
+            ),
             name: str | None,
             default: float = 1.0,
         ) -> dict[str, tuple[float, float]]:
@@ -722,11 +726,21 @@ class Affine(DualTransform):
 
     def __init__(
         self,
-        scale: tuple[float, float] | float | dict[str, float | tuple[float, float]] = (1.0, 1.0),
-        translate_percent: tuple[float, float] | float | dict[str, float | tuple[float, float]] | None = None,
-        translate_px: tuple[int, int] | int | dict[str, int | tuple[int, int]] | None = None,
+        scale: tuple[float, float] | float | dict[str, float | tuple[float, float]] = (
+            1.0,
+            1.0,
+        ),
+        translate_percent: (
+            tuple[float, float] | float | dict[str, float | tuple[float, float]] | None
+        ) = None,
+        translate_px: (
+            tuple[int, int] | int | dict[str, int | tuple[int, int]] | None
+        ) = None,
         rotate: tuple[float, float] | float = 0.0,
-        shear: tuple[float, float] | float | dict[str, float | tuple[float, float]] = (0.0, 0.0),
+        shear: tuple[float, float] | float | dict[str, float | tuple[float, float]] = (
+            0.0,
+            0.0,
+        ),
         interpolation: Literal[
             cv2.INTER_NEAREST,
             cv2.INTER_LINEAR,
@@ -764,7 +778,9 @@ class Affine(DualTransform):
         self.fill_mask = fill_mask
         self.border_mode = border_mode
         self.scale = cast("dict[str, tuple[float, float]]", scale)
-        self.translate_percent = cast("dict[str, tuple[float, float]]", translate_percent)
+        self.translate_percent = cast(
+            "dict[str, tuple[float, float]]", translate_percent
+        )
         self.translate_px = cast("dict[str, tuple[int, int]]", translate_px)
         self.rotate = cast("tuple[float, float]", rotate)
         self.fit_output = fit_output
@@ -1055,11 +1071,18 @@ class Affine(DualTransform):
         height, width = image_shape[:2]
         if self.translate_px is not None:
             return {
-                "x": self.py_random.randint(int(self.translate_px["x"][0]), int(self.translate_px["x"][1])),
-                "y": self.py_random.randint(int(self.translate_px["y"][0]), int(self.translate_px["y"][1])),
+                "x": self.py_random.randint(
+                    int(self.translate_px["x"][0]), int(self.translate_px["x"][1])
+                ),
+                "y": self.py_random.randint(
+                    int(self.translate_px["y"][0]), int(self.translate_px["y"][1])
+                ),
             }
         if self.translate_percent is not None:
-            translate = {key: self.py_random.uniform(*value) for key, value in self.translate_percent.items()}
+            translate = {
+                key: self.py_random.uniform(*value)
+                for key, value in self.translate_percent.items()
+            }
             return cast(
                 "dict[str, int]",
                 {"x": int(translate["x"] * width), "y": int(translate["y"] * height)},
@@ -1202,11 +1225,19 @@ class ShiftScaleRotate(Affine):
         def _check_shift_limit(self) -> Self:
             bounds = -1, 1
             self.shift_limit_x = to_tuple(
-                self.shift_limit_x if self.shift_limit_x is not None else self.shift_limit,
+                (
+                    self.shift_limit_x
+                    if self.shift_limit_x is not None
+                    else self.shift_limit
+                ),
             )
             check_range(self.shift_limit_x, *bounds, "shift_limit_x")
             self.shift_limit_y = to_tuple(
-                self.shift_limit_y if self.shift_limit_y is not None else self.shift_limit,
+                (
+                    self.shift_limit_y
+                    if self.shift_limit_y is not None
+                    else self.shift_limit
+                ),
             )
             check_range(self.shift_limit_y, *bounds, "shift_limit_y")
 
@@ -1382,7 +1413,9 @@ class GridElasticDeform(DualTransform):
     _targets = ALL_TARGETS
 
     class InitSchema(BaseTransformInitSchema):
-        num_grid_xy: Annotated[tuple[int, int], AfterValidator(check_range_bounds(1, None))]
+        num_grid_xy: Annotated[
+            tuple[int, int], AfterValidator(check_range_bounds(1, None))
+        ]
         magnitude: int = Field(gt=0)
         interpolation: Literal[
             cv2.INTER_NEAREST,
@@ -1493,7 +1526,9 @@ class GridElasticDeform(DualTransform):
 
         """
         if not is_rgb_image(img) and not is_grayscale_image(img):
-            raise ValueError("GridElasticDeform transform is only supported for RGB and grayscale images.")
+            raise ValueError(
+                "GridElasticDeform transform is only supported for RGB and grayscale images."
+            )
         return fgeometric.distort_image(img, generated_mesh, self.interpolation)
 
     def apply_to_mask(

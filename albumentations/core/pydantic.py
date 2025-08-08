@@ -57,6 +57,14 @@ class BaseModel:
                     fields[name] = attr
         return fields
 
+    def model_dump(self):
+        """Return a dict of all attributes."""
+        result = {}
+        for key, value in self.__dict__.items():
+            if not key.startswith("_"):
+                result[key] = value
+        return result
+
 
 # Simple validator decorators that do nothing but return the function
 def field_validator(*args, **kwargs):
@@ -77,13 +85,26 @@ def model_validator(*args, **kwargs):
     return decorator
 
 
+class ValidationInfo:
+    """Simple ValidationInfo class that mimics pydantic's ValidationInfo."""
+    
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class ValidationError(ValueError):
+    """Simple ValidationError that mimics pydantic's ValidationError."""
+    pass
+
+
 # Simple AfterValidator that just applies the function
 class AfterValidator:
     """Simple AfterValidator that applies a validation function."""
-
+    
     def __init__(self, func):
         self.func = func
-
+    
     def __call__(self, value):
         return self.func(value)
 

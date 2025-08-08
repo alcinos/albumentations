@@ -10,19 +10,31 @@ from __future__ import annotations
 
 import random
 from copy import deepcopy
-from typing import Annotated, Any, Literal, cast
+from typing import Annotated, Any, cast, Literal
 
 import cv2
 import numpy as np
-from pydantic import AfterValidator, model_validator
-from typing_extensions import Self
 
 from albumentations.augmentations.mixing import functional as fmixing
-from albumentations.core.bbox_utils import BboxProcessor, check_bboxes, denormalize_bboxes, filter_bboxes
+from albumentations.core.bbox_utils import (
+    BboxProcessor,
+    check_bboxes,
+    denormalize_bboxes,
+    filter_bboxes,
+)
 from albumentations.core.keypoints_utils import KeypointsProcessor
-from albumentations.core.pydantic import check_range_bounds, nondecreasing
-from albumentations.core.transforms_interface import BaseTransformInitSchema, DualTransform
+from albumentations.core.pydantic import (
+    AfterValidator,
+    check_range_bounds,
+    model_validator,
+    nondecreasing,
+)
+from albumentations.core.transforms_interface import (
+    BaseTransformInitSchema,
+    DualTransform,
+)
 from albumentations.core.type_definitions import LENGTH_RAW_BBOX, Targets
+from typing_extensions import Self
 
 __all__ = ["Mosaic", "OverlayElements"]
 
@@ -186,11 +198,19 @@ class OverlayElements(DualTransform):
 
             if "mask" in metadata:
                 mask = metadata["mask"]
-                mask = cv2.resize(mask, (x_max - x_min, y_max - y_min), interpolation=cv2.INTER_NEAREST)
+                mask = cv2.resize(
+                    mask,
+                    (x_max - x_min, y_max - y_min),
+                    interpolation=cv2.INTER_NEAREST,
+                )
             else:
                 mask = np.ones((y_max - y_min, x_max - x_min), dtype=np.uint8)
 
-            overlay_image = cv2.resize(overlay_image, (x_max - x_min, y_max - y_min), interpolation=cv2.INTER_AREA)
+            overlay_image = cv2.resize(
+                overlay_image,
+                (x_max - x_min, y_max - y_min),
+                interpolation=cv2.INTER_AREA,
+            )
             offset = (y_min, x_min)
 
             if len(bbox) == LENGTH_RAW_BBOX and "bbox_id" in metadata:
@@ -199,10 +219,18 @@ class OverlayElements(DualTransform):
                 bbox = (x_min, y_min, x_max, y_max, *bbox[4:])
         else:
             if image_height < overlay_height or image_width < overlay_width:
-                overlay_image = cv2.resize(overlay_image, (image_width, image_height), interpolation=cv2.INTER_AREA)
+                overlay_image = cv2.resize(
+                    overlay_image,
+                    (image_width, image_height),
+                    interpolation=cv2.INTER_AREA,
+                )
                 overlay_height, overlay_width = overlay_image.shape[:2]
 
-            mask = metadata["mask"] if "mask" in metadata else np.ones_like(overlay_image, dtype=np.uint8)
+            mask = (
+                metadata["mask"]
+                if "mask" in metadata
+                else np.ones_like(overlay_image, dtype=np.uint8)
+            )
 
             max_x_offset = image_width - overlay_width
             max_y_offset = image_height - overlay_height
@@ -234,7 +262,9 @@ class OverlayElements(DualTransform):
 
         return result
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate parameters for overlay transform based on input data.
 
         Args:
@@ -249,9 +279,14 @@ class OverlayElements(DualTransform):
         img_shape = params["shape"]
 
         if isinstance(metadata, list):
-            overlay_data = [self.preprocess_metadata(md, img_shape, self.py_random) for md in metadata]
+            overlay_data = [
+                self.preprocess_metadata(md, img_shape, self.py_random)
+                for md in metadata
+            ]
         else:
-            overlay_data = [self.preprocess_metadata(metadata, img_shape, self.py_random)]
+            overlay_data = [
+                self.preprocess_metadata(metadata, img_shape, self.py_random)
+            ]
 
         return {
             "overlay_data": overlay_data,
@@ -278,7 +313,9 @@ class OverlayElements(DualTransform):
             overlay_image = data["overlay_image"]
             overlay_mask = data["overlay_mask"]
             offset = data["offset"]
-            img = fmixing.copy_and_paste_blend(img, overlay_image, overlay_mask, offset=offset)
+            img = fmixing.copy_and_paste_blend(
+                img, overlay_image, overlay_mask, offset=offset
+            )
         return img
 
     def apply_to_mask(
@@ -515,7 +552,9 @@ class Mosaic(DualTransform):
                 self.cell_shape[0] * self.grid_yx[0] < self.target_size[0]
                 or self.cell_shape[1] * self.grid_yx[1] < self.target_size[1]
             ):
-                raise ValueError("Target size should be smaller than cell cell_size * grid_yx")
+                raise ValueError(
+                    "Target size should be smaller than cell cell_size * grid_yx"
+                )
             return self
 
     def __init__(
@@ -571,7 +610,9 @@ class Mosaic(DualTransform):
         """
         return [self.metadata_key]
 
-    def _calculate_geometry(self, data: dict[str, Any]) -> list[tuple[int, int, int, int]]:
+    def _calculate_geometry(
+        self, data: dict[str, Any]
+    ) -> list[tuple[int, int, int, int]]:
         # Step 1: Calculate Geometry & Cell Placements
         center_xy = fmixing.calculate_mosaic_center_point(
             grid_yx=self.grid_yx,
@@ -588,8 +629,12 @@ class Mosaic(DualTransform):
             center_xy=center_xy,
         )
 
-    def _select_additional_items(self, data: dict[str, Any], num_additional_needed: int) -> list[dict[str, Any]]:
-        valid_items = fmixing.filter_valid_metadata(data.get(self.metadata_key), self.metadata_key, data)
+    def _select_additional_items(
+        self, data: dict[str, Any], num_additional_needed: int
+    ) -> list[dict[str, Any]]:
+        valid_items = fmixing.filter_valid_metadata(
+            data.get(self.metadata_key), self.metadata_key, data
+        )
         if len(valid_items) > num_additional_needed:
             return self.py_random.sample(valid_items, num_additional_needed)
         return valid_items
@@ -601,8 +646,12 @@ class Mosaic(DualTransform):
     ) -> list[fmixing.ProcessedMosaicItem]:
         if "bboxes" in data or "keypoints" in data:
             bbox_processor = cast("BboxProcessor", self.get_processor("bboxes"))
-            keypoint_processor = cast("KeypointsProcessor", self.get_processor("keypoints"))
-            return fmixing.preprocess_selected_mosaic_items(additional_items, bbox_processor, keypoint_processor)
+            keypoint_processor = cast(
+                "KeypointsProcessor", self.get_processor("keypoints")
+            )
+            return fmixing.preprocess_selected_mosaic_items(
+                additional_items, bbox_processor, keypoint_processor
+            )
         return cast("list[fmixing.ProcessedMosaicItem]", list(additional_items))
 
     def _prepare_final_items(
@@ -615,7 +664,9 @@ class Mosaic(DualTransform):
         replicated = [deepcopy(primary) for _ in range(num_replications)]
         return [primary, *additional_items, *replicated]
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Orchestrates the steps to calculate mosaic parameters by calling helper methods."""
         cell_placements = self._calculate_geometry(data)
 
@@ -624,10 +675,14 @@ class Mosaic(DualTransform):
 
         additional_items = self._select_additional_items(data, num_additional_needed)
 
-        preprocessed_additional = self._preprocess_additional_items(additional_items, data)
+        preprocessed_additional = self._preprocess_additional_items(
+            additional_items, data
+        )
 
         primary = self.get_primary_data(data)
-        final_items = self._prepare_final_items(primary, preprocessed_additional, num_additional_needed)
+        final_items = self._prepare_final_items(
+            primary, preprocessed_additional, num_additional_needed
+        )
 
         placement_to_item_index = fmixing.assign_items_to_grid_cells(
             num_items=len(final_items),
@@ -648,9 +703,14 @@ class Mosaic(DualTransform):
         )
 
         if "bboxes" in data or "keypoints" in data:
-            processed_cells = fmixing.shift_all_coordinates(processed_cells, canvas_shape=self.target_size)
+            processed_cells = fmixing.shift_all_coordinates(
+                processed_cells, canvas_shape=self.target_size
+            )
 
-        result = {"processed_cells": processed_cells, "target_shape": self._get_target_shape(data["image"].shape)}
+        result = {
+            "processed_cells": processed_cells,
+            "target_shape": self._get_target_shape(data["image"].shape),
+        }
         if "mask" in data:
             result["target_mask_shape"] = self._get_target_shape(data["mask"].shape)
         return result

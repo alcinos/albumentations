@@ -16,14 +16,27 @@ from warnings import warn
 
 import cv2
 import numpy as np
-from albucore import clipped, float32_io, maybe_process_in_chunks, preserve_channel_dim, uint8_io
-from pydantic import ValidationInfo
+from albucore import (
+    clipped,
+    float32_io,
+    maybe_process_in_chunks,
+    preserve_channel_dim,
+    uint8_io,
+)
 
 from albumentations.augmentations.geometric.functional import scale
 from albumentations.augmentations.pixel.functional import convolve
+from albumentations.core.pydantic import ValidationInfo
 from albumentations.core.type_definitions import EIGHT
 
-__all__ = ["box_blur", "central_zoom", "defocus", "glass_blur", "median_blur", "zoom_blur"]
+__all__ = [
+    "box_blur",
+    "central_zoom",
+    "defocus",
+    "glass_blur",
+    "median_blur",
+    "zoom_blur",
+]
 
 
 @preserve_channel_dim
@@ -114,7 +127,9 @@ def glass_blur(
             dx = dxy[idx, i, 1]
             x[h, w], x[h + dy, w + dx] = x[h + dy, w + dx], x[h, w]
     else:
-        raise ValueError(f"Unsupported mode `{mode}`. Supports only `fast` and `exact`.")
+        raise ValueError(
+            f"Unsupported mode `{mode}`. Supports only `fast` and `exact`."
+        )
 
     return cv2.GaussianBlur(x, sigmaX=sigma, ksize=(0, 0))
 
@@ -162,7 +177,9 @@ def central_zoom(img: np.ndarray, zoom_factor: int) -> np.ndarray:
     h_ch, w_ch = ceil(height / zoom_factor), ceil(width / zoom_factor)
     h_top, w_top = (height - h_ch) // 2, (width - w_ch) // 2
 
-    img = scale(img[h_top : h_top + h_ch, w_top : w_top + w_ch], zoom_factor, cv2.INTER_LINEAR)
+    img = scale(
+        img[h_top : h_top + h_ch, w_top : w_top + w_ch], zoom_factor, cv2.INTER_LINEAR
+    )
     h_trim_top, w_trim_top = (img.shape[0] - height) // 2, (img.shape[1] - width) // 2
     return img[h_trim_top : h_trim_top + height, w_trim_top : w_trim_top + width]
 
@@ -190,7 +207,9 @@ def zoom_blur(img: np.ndarray, zoom_factors: np.ndarray | Sequence[int]) -> np.n
     return (img + out) / (len(zoom_factors) + 1)
 
 
-def _ensure_min_value(result: tuple[int, int], min_value: int, field_name: str | None) -> tuple[int, int]:
+def _ensure_min_value(
+    result: tuple[int, int], min_value: int, field_name: str | None
+) -> tuple[int, int]:
     if result[0] < min_value or result[1] < min_value:
         new_result = (max(min_value, result[0]), max(min_value, result[1]))
         warn(
@@ -204,7 +223,9 @@ def _ensure_min_value(result: tuple[int, int], min_value: int, field_name: str |
     return result
 
 
-def _ensure_odd_values(result: tuple[int, int], field_name: str | None = None) -> tuple[int, int]:
+def _ensure_odd_values(
+    result: tuple[int, int], field_name: str | None = None
+) -> tuple[int, int]:
     new_result = (
         result[0] if result[0] == 0 or result[0] % 2 == 1 else result[0] + 1,
         result[1] if result[1] == 0 or result[1] % 2 == 1 else result[1] + 1,
@@ -218,7 +239,9 @@ def _ensure_odd_values(result: tuple[int, int], field_name: str | None = None) -
     return new_result
 
 
-def process_blur_limit(value: int | tuple[int, int], info: ValidationInfo, min_value: int = 0) -> tuple[int, int]:
+def process_blur_limit(
+    value: int | tuple[int, int], info: ValidationInfo, min_value: int = 0
+) -> tuple[int, int]:
     """Process blur limit to ensure valid kernel sizes."""
     # Convert value to tuple[int, int]
     if isinstance(value, Sequence):

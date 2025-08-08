@@ -13,7 +13,7 @@ from inspect import Parameter, signature
 from typing import Any, Callable
 from warnings import warn
 
-from pydantic import BaseModel, ValidationError
+from albumentations.core.pydantic import BaseModel, ValidationError
 
 
 class ValidatedTransformMeta(type):

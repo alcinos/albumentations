@@ -2,7 +2,7 @@ from inspect import Parameter, signature
 from typing import Any, Dict, Optional, Tuple, Union
 
 import pytest
-from pydantic import BaseModel
+from albumentations.core.pydantic import BaseModel
 
 import albumentations as A
 from albumentations.core.pydantic import (

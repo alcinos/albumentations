@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any, Literal, cast
 
 import numpy as np
-from pydantic import model_validator
+from albumentations.core.pydantic import model_validator
 from typing_extensions import Self
 
 from albumentations.augmentations.dropout.transforms import BaseDropout

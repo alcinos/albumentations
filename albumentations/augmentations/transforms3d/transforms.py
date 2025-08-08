@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal, Union, cast
 
 import numpy as np
-from pydantic import AfterValidator, field_validator, model_validator
+from albumentations.core.pydantic import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 
 from albumentations.augmentations.geometric import functional as fgeometric

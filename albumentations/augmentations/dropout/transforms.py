@@ -8,11 +8,10 @@ in images, which can help models become more robust to occlusions and missing in
 
 from __future__ import annotations
 
-from typing import Any, Literal, cast
+from typing import Any, cast, Literal
 
 import numpy as np
 from albucore import get_num_channels
-from pydantic import Field
 
 from albumentations.augmentations.dropout import functional as fdropout
 from albumentations.augmentations.dropout.functional import (
@@ -23,9 +22,17 @@ from albumentations.augmentations.dropout.functional import (
     filter_keypoints_in_holes,
 )
 from albumentations.augmentations.pixel import functional as fpixel
-from albumentations.core.bbox_utils import BboxProcessor, denormalize_bboxes, normalize_bboxes
+from albumentations.core.bbox_utils import (
+    BboxProcessor,
+    denormalize_bboxes,
+    normalize_bboxes,
+)
 from albumentations.core.keypoints_utils import KeypointsProcessor
-from albumentations.core.transforms_interface import BaseTransformInitSchema, DualTransform
+from albumentations.core.pydantic import Field
+from albumentations.core.transforms_interface import (
+    BaseTransformInitSchema,
+    DualTransform,
+)
 from albumentations.core.type_definitions import ALL_TARGETS, Targets
 
 __all__ = ["PixelDropout"]
@@ -113,12 +120,20 @@ class BaseDropout(DualTransform):
     _targets: tuple[Targets, ...] | Targets = ALL_TARGETS
 
     class InitSchema(BaseTransformInitSchema):
-        fill: tuple[float, ...] | float | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"]
+        fill: (
+            tuple[float, ...]
+            | float
+            | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"]
+        )
         fill_mask: tuple[float, ...] | float | None
 
     def __init__(
         self,
-        fill: tuple[float, ...] | float | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"],
+        fill: (
+            tuple[float, ...]
+            | float
+            | Literal["random", "random_uniform", "inpaint_telea", "inpaint_ns"]
+        ),
         fill_mask: tuple[float, ...] | float | None,
         p: float,
     ):
@@ -126,7 +141,9 @@ class BaseDropout(DualTransform):
         self.fill = fill  # type: ignore[assignment]
         self.fill_mask = fill_mask
 
-    def apply(self, img: np.ndarray, holes: np.ndarray, seed: int, **params: Any) -> np.ndarray:
+    def apply(
+        self, img: np.ndarray, holes: np.ndarray, seed: int, **params: Any
+    ) -> np.ndarray:
         if holes.size == 0:
             return img
         if self.fill in {"inpaint_telea", "inpaint_ns"}:
@@ -135,7 +152,9 @@ class BaseDropout(DualTransform):
                 raise ValueError("Inpainting works only for 1 or 3 channel images")
         return cutout(img, holes, self.fill, np.random.default_rng(seed))
 
-    def apply_to_images(self, images: np.ndarray, holes: np.ndarray, seed: int, **params: Any) -> np.ndarray:
+    def apply_to_images(
+        self, images: np.ndarray, holes: np.ndarray, seed: int, **params: Any
+    ) -> np.ndarray:
         if holes.size == 0:
             return images
         if self.fill in {"inpaint_telea", "inpaint_ns"}:
@@ -145,12 +164,16 @@ class BaseDropout(DualTransform):
         # Images (N, H, W, C) have the same structure as volumes (D, H, W, C)
         return cutout_on_volume(images, holes, self.fill, np.random.default_rng(seed))
 
-    def apply_to_volume(self, volume: np.ndarray, holes: np.ndarray, seed: int, **params: Any) -> np.ndarray:
+    def apply_to_volume(
+        self, volume: np.ndarray, holes: np.ndarray, seed: int, **params: Any
+    ) -> np.ndarray:
         # Volume (D, H, W, C) has the same structure as images (N, H, W, C)
         # We can reuse the same logic
         return self.apply_to_images(volume, holes, seed, **params)
 
-    def apply_to_volumes(self, volumes: np.ndarray, holes: np.ndarray, seed: int, **params: Any) -> np.ndarray:
+    def apply_to_volumes(
+        self, volumes: np.ndarray, holes: np.ndarray, seed: int, **params: Any
+    ) -> np.ndarray:
         if holes.size == 0:
             return volumes
         if self.fill in {"inpaint_telea", "inpaint_ns"}:
@@ -159,17 +182,27 @@ class BaseDropout(DualTransform):
                 raise ValueError("Inpainting works only for 1 or 3 channel images")
         return cutout_on_volumes(volumes, holes, self.fill, np.random.default_rng(seed))
 
-    def apply_to_mask3d(self, mask: np.ndarray, holes: np.ndarray, seed: int, **params: Any) -> np.ndarray:
+    def apply_to_mask3d(
+        self, mask: np.ndarray, holes: np.ndarray, seed: int, **params: Any
+    ) -> np.ndarray:
         if self.fill_mask is None or holes.size == 0:
             return mask
-        return cutout_on_volume(mask, holes, self.fill_mask, np.random.default_rng(seed))
+        return cutout_on_volume(
+            mask, holes, self.fill_mask, np.random.default_rng(seed)
+        )
 
-    def apply_to_masks3d(self, mask: np.ndarray, holes: np.ndarray, seed: int, **params: Any) -> np.ndarray:
+    def apply_to_masks3d(
+        self, mask: np.ndarray, holes: np.ndarray, seed: int, **params: Any
+    ) -> np.ndarray:
         if self.fill_mask is None or holes.size == 0:
             return mask
-        return cutout_on_volumes(mask, holes, self.fill_mask, np.random.default_rng(seed))
+        return cutout_on_volumes(
+            mask, holes, self.fill_mask, np.random.default_rng(seed)
+        )
 
-    def apply_to_mask(self, mask: np.ndarray, holes: np.ndarray, seed: int, **params: Any) -> np.ndarray:
+    def apply_to_mask(
+        self, mask: np.ndarray, holes: np.ndarray, seed: int, **params: Any
+    ) -> np.ndarray:
         if self.fill_mask is None or holes.size == 0:
             return mask
         return cutout(mask, holes, self.fill_mask, np.random.default_rng(seed))
@@ -215,7 +248,9 @@ class BaseDropout(DualTransform):
 
         return filter_keypoints_in_holes(keypoints, holes)
 
-    def get_params_dependent_on_data(self, params: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    def get_params_dependent_on_data(
+        self, params: dict[str, Any], data: dict[str, Any]
+    ) -> dict[str, Any]:
         raise NotImplementedError("Subclasses must implement this method.")
 
 
@@ -372,7 +407,9 @@ class PixelDropout(DualTransform):
         # by combining the multi-channel mask (considering a pixel dropped if it's dropped in any channel)
         if self.per_channel and len(drop_mask.shape) > 2:
             # Create a single channel mask where a pixel is considered dropped if it's dropped in any channel
-            combined_mask = np.any(drop_mask, axis=-1 if drop_mask.shape[-1] <= 4 else 0)
+            combined_mask = np.any(
+                drop_mask, axis=-1 if drop_mask.shape[-1] <= 4 else 0
+            )
             # Ensure the mask has the right shape for the bboxes function
             if combined_mask.ndim == 3 and combined_mask.shape[0] == 1:
                 combined_mask = combined_mask[0]
@@ -457,5 +494,7 @@ class PixelDropout(DualTransform):
             "drop_mask": drop_mask,
             "drop_values": drop_values,
             "mask_drop_mask": mask_drop_mask if mask_drop_mask is not None else None,
-            "mask_drop_values": mask_drop_values if mask_drop_values is not None else None,
+            "mask_drop_values": (
+                mask_drop_values if mask_drop_values is not None else None
+            ),
         }

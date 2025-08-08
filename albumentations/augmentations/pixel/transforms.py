@@ -30,7 +30,7 @@ from albucore import (
     normalize_per_image,
     normalize_per_image_batch,
 )
-from pydantic import (
+from albumentations.core.pydantic import (
     AfterValidator,
     BaseModel,
     ConfigDict,

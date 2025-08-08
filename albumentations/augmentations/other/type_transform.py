@@ -11,20 +11,14 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from albucore import (
-    from_float,
-    get_max_value,
-    to_float,
-)
-from pydantic import (
-    model_validator,
-)
-from typing_extensions import Literal, Self
+from albucore import from_float, get_max_value, to_float
+from albumentations.core.pydantic import model_validator
 
 from albumentations.core.transforms_interface import (
     BaseTransformInitSchema,
     ImageOnlyTransform,
 )
+from typing_extensions import Literal, Self
 
 __all__ = [
     "FromFloat",

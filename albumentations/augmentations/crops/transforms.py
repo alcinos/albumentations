@@ -15,7 +15,7 @@ from typing import Annotated, Any, Literal, Union, cast
 
 import cv2
 import numpy as np
-from pydantic import AfterValidator, Field, model_validator
+from albumentations.core.pydantic import AfterValidator, Field, model_validator
 from typing_extensions import Self
 
 from albumentations.augmentations.geometric import functional as fgeometric
